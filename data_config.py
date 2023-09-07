@@ -10,7 +10,8 @@ class DataConfig:
             self.root_dir = '/home/brendan/LASTFormer/ChangeFormer-main/datasets/LEVIR-CD-256/'
         elif data_name == 'change256':
             self.label_transform = "norm"
-            self.root_dir = '/home/brendan/LASTFormer/ChangeFormer-main/datasets/change256/'
+            #self.root_dir = '/home/brendan/LASTFormer/ChangeFormer-main/datasets/change256/'
+            self.root_dir = '/Users/aonghus/work/ChangeFormer/datasets/change256/'
         elif data_name == 'change512':
             self.label_transform = "norm"
             self.root_dir = '/home/brendan/LASTFormer/ChangeFormer-main/datasets/change512/'

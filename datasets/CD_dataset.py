@@ -9,7 +9,7 @@ import numpy as np
 from torch.utils import data
 
 from datasets.data_utils import CDDataAugmentation
-
+from misc.logger_tool import logger
 
 """
 CD data set with pixel-level labels；
@@ -28,7 +28,8 @@ IGNORE = 255
 label_suffix='.png' # jpg for gan dataset, others : png
 
 def load_img_name_list(dataset_path):
-    img_name_list = np.loadtxt(dataset_path, dtype=np.str)
+    logger.info(f"dataset_path: {dataset_path}")
+    img_name_list = np.loadtxt(dataset_path, dtype=np.str_)
     if img_name_list.ndim == 2:
         return img_name_list[:, 0]
     return img_name_list
@@ -60,6 +61,7 @@ class ImageDataset(data.Dataset):
         self.split = split  #train | train_aug | val
         # self.list_path = self.root_dir + '/' + LIST_FOLDER_NAME + '/' + self.list + '.txt'
         self.list_path = os.path.join(self.root_dir, LIST_FOLDER_NAME, self.split+'.txt')
+        logger.info(f"list_path {self.list_path}")
         self.img_name_list = load_img_name_list(self.list_path)
 
         self.A_size = len(self.img_name_list)  # get the size of dataset A

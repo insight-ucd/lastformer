@@ -1,3 +1,5 @@
+import sys
+
 import torch
 import torch.nn as nn
 from torch.nn import init
@@ -8,6 +10,7 @@ import functools
 from einops import rearrange
 
 import models
+import utils
 from models.help_funcs import Transformer, TransformerDecoder, TwoLayerConv2d
 from models.ChangeFormer import ChangeFormerV1, ChangeFormerV2, ChangeFormerV3, ChangeFormerV4, ChangeFormerV5, ChangeFormerV6
 from models.SiamUnet_diff import SiamUnet_diff
@@ -15,6 +18,8 @@ from models.SiamUnet_conc import SiamUnet_conc
 from models.Unet import Unet
 from models.DTCDSCN import CDNet34
 from models.SwinTransformerCD256 import SwinTransformerCD256
+
+from misc.logger_tool import logger
 
 ###############################################################################
 # Helper Functions
@@ -116,11 +121,12 @@ def init_net(net, init_type='normal', init_gain=0.02, gpu_ids=[]):
 
     Return an initialized network.
     """
-    if len(gpu_ids) > 0:
-        assert(torch.cuda.is_available())
-        net.to(gpu_ids[0])
-        if len(gpu_ids) > 1:
-            net = torch.nn.DataParallel(net, gpu_ids)  # multi-GPUs
+    if torch.cuda.is_available():
+        if len(gpu_ids) > 0:
+            assert(torch.cuda.is_available())
+            net.to(gpu_ids[0])
+            if len(gpu_ids) > 1:
+                net = torch.nn.DataParallel(net, gpu_ids)  # multi-GPUs
     init_weights(net, init_type, init_gain=init_gain)
     return net
 
@@ -183,6 +189,13 @@ def define_G(args, init_type='normal', init_gain=0.02, gpu_ids=[]):
     elif args.net_G == 'SwinTransformerCD256':
         net = SwinTransformerCD256(num_classes=2, pretrained=False)
 
+    elif args.net_G == 'XBAT':
+        from models.xbound.xboundformer import _segm_pvtv2
+        logger.info("creating XBAT")
+        net = _segm_pvtv2(1, args.im_num, args.ex_num,
+                            args.xbound, args.img_size).to(utils.get_device(args))
+
+    
     else:
         raise NotImplementedError('Generator model name [%s] is not recognized' % args.net_G)
     return init_net(net, init_type, init_gain, gpu_ids)

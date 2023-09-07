@@ -71,7 +71,12 @@ if __name__ == '__main__':
                         help='linear | step')
     parser.add_argument('--lr_decay_iters', default=100, type=int)
 
+    parser.add_argument('--im_num', type=int, default=1)
+    parser.add_argument('--ex_num', type=int, default=1)
+    parser.add_argument('--xbound', type=int, default=1)
+
     args = parser.parse_args()
+    logger.info(f"args: {args}")
     utils.get_device(args)
     print(args.gpu_ids)
     
