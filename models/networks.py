@@ -14,6 +14,7 @@ from models.SiamUnet_diff import SiamUnet_diff
 from models.SiamUnet_conc import SiamUnet_conc
 from models.Unet import Unet
 from models.DTCDSCN import CDNet34
+from models.SwinTransformerCD256 import SwinTransformerCD256
 
 ###############################################################################
 # Helper Functions
@@ -178,6 +179,9 @@ def define_G(args, init_type='normal', init_gain=0.02, gpu_ids=[]):
         #The implementation of the paper"Building Change Detection for Remote Sensing Images Using a Dual Task Constrained Deep Siamese Convolutional Network Model "
         #Code copied from: https://github.com/fitzpchao/DTCDSCN
         net = CDNet34(in_channels=3)
+
+    elif args.net_G == 'SwinTransformerCD256':
+        net = SwinTransformerCD256(num_classes=2, pretrained=False)
 
     else:
         raise NotImplementedError('Generator model name [%s] is not recognized' % args.net_G)

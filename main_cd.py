@@ -1,6 +1,8 @@
 from argparse import ArgumentParser
 import torch
 from models.trainer import *
+from models.SwinTransformerCD256 import SwinTransformerCD256
+
 
 print(torch.cuda.is_available())
 
