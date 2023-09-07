@@ -4,20 +4,20 @@ import os
 
 import utils
 from models.networks import *
-
 import torch
 import torch.optim as optim
 import numpy as np
 from misc.metric_tool import ConfuseMatrixMeter
 from models.losses import cross_entropy
 import models.losses as losses
-from models.losses import get_alpha, softmax_helper, FocalLoss, mIoULoss, mmIoULoss
-
+from models.losses import get_alpha, softmax_helper, FocalLoss, mIoULoss, mmIoULoss, dice_loss, DiceBCELoss, BK_Dice_CE_Loss
 from misc.logger_tool import Logger, Timer
 
 from utils import de_norm
 
 from tqdm import tqdm
+
+from torchmetrics.functional import dice
 
 class CDTrainer():
 
@@ -48,6 +48,7 @@ class CDTrainer():
         elif args.optimizer == "adamw":
             self.optimizer_G = optim.AdamW(self.net_G.parameters(), lr=self.lr,
                                     betas=(0.9, 0.999), weight_decay=0.01)
+    
 
         # self.optimizer_G = optim.Adam(self.net_G.parameters(), lr=self.lr)
 
@@ -108,6 +109,20 @@ class CDTrainer():
             weights = 1-torch.from_numpy(alpha).cuda()
             print(f"Weights = {weights}")
             self._pxl_loss = mIoULoss(weight=weights, size_average=True, n_classes=args.n_class).cuda()
+       
+    #dice loss by BK
+        elif args.loss == "dice_loss":
+            print('\n beginning dice loss...')
+            self._pxl_loss = dice_loss()
+        
+        elif args.loss == "DiceBCELoss":
+            print('\n beginning DiceBCELoss...')
+            self._pxl_loss = DiceBCELoss()
+        
+        elif args.loss == "BK_Dice_CE_Loss":
+            print('\n bK_Dice_CE_Loss...')
+            self._pxl_loss = BK_Dice_CE_Loss()
+
         elif args.loss == "mmiou":
             self._pxl_loss = mmIoULoss(n_classes=args.n_class).cuda()
         else:
@@ -187,6 +202,7 @@ class CDTrainer():
 
     def _update_lr_schedulers(self):
         self.exp_lr_scheduler_G.step()
+        
 
     def _update_metric(self):
         """
@@ -194,15 +210,16 @@ class CDTrainer():
         """
         target = self.batch['L'].to(self.device).detach()
         G_pred = self.G_final_pred.detach()
-
+        
         G_pred = torch.argmax(G_pred, dim=1)
+        dice_score = dice(G_pred, target, ignore_index=0)
 
         current_score = self.running_metric.update_cm(pr=G_pred.cpu().numpy(), gt=target.cpu().numpy())
-        return current_score
+        return current_score, dice_score
 
     def _collect_running_batch_states(self):
 
-        running_acc = self._update_metric()
+        running_acc, dice_score = self._update_metric()
 
         m = len(self.dataloaders['train'])
         if self.is_training is False:
@@ -210,10 +227,10 @@ class CDTrainer():
 
         imps, est = self._timer_update()
         if np.mod(self.batch_id, 100) == 1:
-            message = 'Is_training: %s. [%d,%d][%d,%d], imps: %.2f, est: %.2fh, G_loss: %.5f, running_mf1: %.5f\n' %\
+            message = 'Is_training: %s. [%d,%d][%d,%d], imps: %.2f, est: %.2fh, G_loss: %.5f, running_mf1: %.5f, dice: %.5f \n' %\
                       (self.is_training, self.epoch_id, self.max_num_epochs-1, self.batch_id, m,
                      imps*self.batch_size, est,
-                     self.G_loss.item(), running_acc)
+                     self.G_loss.item(), running_acc, dice_score)
             self.logger.write(message)
 
 
@@ -295,6 +312,7 @@ class CDTrainer():
         if self.multi_scale_train == "True":
             i         = 0
             temp_loss = 0.0
+            
             for pred in self.G_pred:
                 if pred.size(2) != gt.size(2):
                     temp_loss = temp_loss + self.weights[i]*self._pxl_loss(pred, F.interpolate(gt, size=pred.size(2), mode="nearest"))

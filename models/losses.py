@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import torch.nn as nn
+from torchmetrics.functional import dice
 
 def cross_entropy(input, target, weight=None, reduction='mean',ignore_index=255):
     """
@@ -226,3 +227,95 @@ class mmIoULoss(nn.Module):
         #loss
         loss = -min_iou-torch.mean(iou)
         return loss
+    
+    #dice loss by BK
+    
+class dice_loss(nn.Module):
+    def __init__(self, weight=None, size_average=True):
+        super(dice_loss, self).__init__()
+
+    def forward(self, inputs, targets, smooth=1):
+    
+    # Convert targets to one-hot encoding
+        targets_one_hot = torch.nn.functional.one_hot(targets.squeeze(1).long(), num_classes=inputs.size(1)).permute(0, 3, 1, 2).float()
+    
+    # Use sigmoid activation for inputs
+        inputs = torch.sigmoid(inputs)  
+    
+    # Flatten the tensors 
+        inputs = inputs.view(inputs.size(0), inputs.size(1), -1)
+        targets_one_hot = targets_one_hot.view(targets_one_hot.size(0), targets_one_hot.size(1), -1)
+    
+    # Compute Dice loss for each class and then average
+        intersection = (inputs * targets_one_hot).sum(dim=2)
+        dice = (2. * intersection + smooth) / (inputs.sum(dim=2) + targets_one_hot.sum(dim=2) + smooth)
+        loss = 1 - dice.mean()
+    
+        return loss
+
+class DiceBCELoss(nn.Module):
+    def __init__(self, weight=None, size_average=True):
+        super(DiceBCELoss, self).__init__()
+
+    def forward(self, inputs, targets, smooth=1):
+        
+        # Convert targets to one-hot encoding
+        targets_one_hot = torch.nn.functional.one_hot(targets.squeeze(1).long(), num_classes=inputs.size(1)).permute(0, 3, 1, 2).float()
+    
+        # Use sigmoid activation for inputs
+        inputs = torch.sigmoid(inputs)  
+    
+        # Flatten the tensors 
+        inputs = inputs.view(inputs.size(0), inputs.size(1), -1)
+        targets_one_hot = targets_one_hot.view(targets_one_hot.size(0), targets_one_hot.size(1), -1)
+        
+        # Compute Dice loss
+        intersection = (inputs * targets_one_hot).sum(dim=2) 
+        dice_loss = 1 - (2.*intersection + smooth) / (inputs.sum(dim=2) + targets_one_hot.sum(dim=2) + smooth)
+        
+        # Compute BCE
+        BCE = F.binary_cross_entropy(inputs, targets_one_hot, reduction='mean')
+        
+        # Combine Dice loss and BCE
+        loss = BCE + dice_loss.mean()
+        
+        return loss
+    
+class BK_Dice_CE_Loss(nn.Module):
+    def __init__(self, size_average=True):
+        super(BK_Dice_CE_Loss, self).__init__()
+
+    def forward(self, inputs, targets, smooth=1):
+        
+        # Convert targets to one-hot encoding
+        targets_one_hot = torch.nn.functional.one_hot(targets.squeeze(1).long(), num_classes=inputs.size(1)).permute(0, 3, 1, 2).float()
+    
+        # Use sigmoid activation for inputs
+        inputs_sigmoid = torch.sigmoid(inputs)  
+    
+        # Flatten the tensors for Dice loss computation
+        inputs_flat = inputs_sigmoid.view(inputs_sigmoid.size(0), inputs_sigmoid.size(1), -1)
+        targets_one_hot_flat = targets_one_hot.view(targets_one_hot.size(0), targets_one_hot.size(1), -1)
+        
+        # Compute Dice loss
+        intersection = (inputs_flat * targets_one_hot_flat).sum(dim=2) 
+        dice_loss = 1 - (2.*intersection + smooth) / (inputs_flat.sum(dim=2) + targets_one_hot_flat.sum(dim=2) + smooth)
+        
+        # Compute BCE using the cross_entropy function
+        CE = self.cross_entropy(inputs_sigmoid, targets)
+        
+        # Combine Dice loss and CE
+        loss = CE + dice_loss.mean()
+        
+        return loss
+
+    def cross_entropy(self, inputs, target_, weight=[0.001,0.999], reduction='mean', ignore_index=255):
+        target_ = target_.long()
+        if target_.dim() == 4:
+            target_ = torch.squeeze(target_, dim=1)
+        if inputs.shape[-2:] != target_.shape[-2:]:
+            inputs = F.interpolate(inputs, size=target_.shape[-2:], mode='bilinear', align_corners=True)
+        
+        weight_tensor = torch.tensor(weight).to(inputs.device)
+        return F.cross_entropy(input=inputs, target=target_, weight=weight_tensor, ignore_index=ignore_index, reduction=reduction)
+

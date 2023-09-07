@@ -8,6 +8,7 @@ from misc.logger_tool import Logger
 from utils import de_norm
 import utils
 
+from torchmetrics.functional import dice
 
 # Decide which device we want to run on
 # torch.cuda.current_device()
@@ -59,6 +60,13 @@ class CDEvaluator():
         if os.path.exists(self.vis_dir) is False:
             os.mkdir(self.vis_dir)
 
+        self.total_dice_score = 0.0
+        self.num_batches = 0
+        
+        self.total_change_dice_score = 0.0  
+        self.num_change_dice_batches = 0
+
+
 
     def _load_checkpoint(self, checkpoint_name='best_ckpt.pt'):
 
@@ -77,7 +85,6 @@ class CDEvaluator():
 
             self.logger.write('Eval Historical_best_acc = %.4f (at epoch %d)\n' %
                   (self.best_val_acc, self.best_epoch_id))
-            self.logger.write('\n')
 
         else:
             raise FileNotFoundError('no such checkpoint %s' % checkpoint_name)
@@ -95,20 +102,52 @@ class CDEvaluator():
         """
         target = self.batch['L'].to(self.device).detach()
         G_pred = self.G_pred.detach()
+
         G_pred = torch.argmax(G_pred, dim=1)
 
+        # Original Dice computation
+        if torch.sum(G_pred) == 0 and torch.sum(target) == 0:
+            dice_score = 1.0
+        else:
+            dice_score = dice(G_pred, target, ignore_index=0)
+
+        # Always increment num_batches for every batch processed
+        self.num_batches += 1
+
+        # Incrementing the total dice score
+        self.total_dice_score += dice_score.item() if isinstance(dice_score, torch.Tensor) else dice_score
+
+        dice_score_change = 0.0  # Initialize the variable
+
+        # Calculate change_dice only if torch.sum(target) > 0
+        if torch.sum(target) > 0:
+            dice_score_change = dice(G_pred, target, ignore_index=0)
+
+            # Handle float or tensor type of dice_score_change
+            if isinstance(dice_score_change, torch.Tensor):
+                self.total_change_dice_score += dice_score_change.item()
+            else:
+                self.total_change_dice_score += dice_score_change
+
+            self.num_change_dice_batches += 1
+
         current_score = self.running_metric.update_cm(pr=G_pred.cpu().numpy(), gt=target.cpu().numpy())
-        return current_score
+
+        # Your average calculation logic here
+        average_epoch_dice_score = self.total_dice_score / self.num_batches
+
+        return current_score, dice_score
+
 
     def _collect_running_batch_states(self):
 
-        running_acc = self._update_metric()
+        running_acc, dice_score = self._update_metric()
 
         m = len(self.dataloader)
 
         if np.mod(self.batch_id, 100) == 1:
-            message = 'Is_training: %s. [%d,%d],  running_mf1: %.5f\n' %\
-                      (self.is_training, self.batch_id, m, running_acc)
+            message = 'Is_training: %s. [%d,%d],  running_mf1: %.5f, dice: %.5f \n' %\
+                      (self.is_training, self.batch_id, m, running_acc, dice_score)
             self.logger.write(message)
 
         if np.mod(self.batch_id, 100) == 1:
@@ -123,6 +162,7 @@ class CDEvaluator():
             file_name = os.path.join(
                 self.vis_dir, 'eval_' + str(self.batch_id)+'.jpg')
             plt.imsave(file_name, vis)
+            
 
 
     def _collect_epoch_states(self):
@@ -139,10 +179,30 @@ class CDEvaluator():
 
         message = ''
         for k, v in scores_dict.items():
-            message += '%s: %.5f ' % (k, v)
+            print(f"Key: {k}, Value: {v}, Type of Value: {type(v)}")
+            message += '%s: %.5f ' % (k, v) if v is not None else '%s: None ' % k
         self.logger.write('%s\n' % message)  # save the message
 
         self.logger.write('\n')
+        
+        average_epoch_dice_score = self.total_dice_score / self.num_batches
+
+        self.logger.write('Average Epoch Dice Score: %.5f\n' % average_epoch_dice_score)  # print the average epoch dice score
+    
+    # Reset for next epoch
+        self.total_dice_score = 0.0
+        self.num_batches = 0
+        
+        if self.num_change_dice_batches > 0:
+            average_epoch_change_dice_score = self.total_change_dice_score / self.num_change_dice_batches
+        else:
+            average_epoch_change_dice_score = 0.0
+
+        self.logger.write('Average Epoch Change Dice Score: %.5f\n' % average_epoch_change_dice_score)  # print the average epoch change dice score
+    
+        # Reset for next epoch
+        self.total_change_dice_score = 0.0
+        self.num_change_dice_batches = 0
 
     def _clear_cache(self):
         self.running_metric.clear()

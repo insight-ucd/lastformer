@@ -44,7 +44,7 @@ class CDDataAugmentation:
         self.with_random_crop = with_random_crop
         self.with_scale_random_crop = with_scale_random_crop
         self.with_random_blur = with_random_blur
-        self.random_color_tf=random_color_tf
+        #self.random_color_tf=random_color_tf
     def transform(self, imgs, labels, to_tensor=True):
         """
         :param imgs: [ndarray,]
@@ -119,17 +119,17 @@ class CDDataAugmentation:
             imgs = [img.filter(ImageFilter.GaussianBlur(radius=radius))
                     for img in imgs]
 
-        if self.random_color_tf:
-            color_jitter = transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.3)
-            imgs_tf = []
-            for img in imgs:
-                tf = transforms.ColorJitter(
-                            color_jitter.brightness, 
-                            color_jitter.contrast, 
-                            color_jitter.saturation,
-                            color_jitter.hue)
-                imgs_tf.append(tf(img))
-            imgs = imgs_tf
+        #if self.random_color_tf:
+            #color_jitter = transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.3)
+            #imgs_tf = []
+            #for img in imgs:
+                #tf = transforms.ColorJitter(
+                            #color_jitter.brightness, 
+                            #color_jitter.contrast, 
+                            #color_jitter.saturation,
+                            #color_jitter.hue)
+                #imgs_tf.append(tf(img))
+            #imgs = imgs_tf
             
         if to_tensor:
             # to tensor

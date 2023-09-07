@@ -13,7 +13,7 @@ lr=0.0001
 max_epochs=200
 embed_dim=256
 
-net_G=base_transformer_pos_s4_dd8
+net_G=SiamUnet_diff
 
 #base_resnet18
 #base_transformer_pos_s4_dd8
@@ -27,7 +27,7 @@ multi_scale_infer=False
 shuffle_AB=False
 
 #Initializing from pretrained weights
-pretrain=/home/brendan/LASTFormer/ChangeFormer-main/BViT_best_ckpt.pt
+pretrain=/home/brendan/LASTFormer/ChangeFormer-main/SUNetDif_best_ckpt.pt
 
 #Train and Validation splits
 split=train         #trainval
