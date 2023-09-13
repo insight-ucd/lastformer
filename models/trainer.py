@@ -18,6 +18,7 @@ from utils import de_norm
 from tqdm import tqdm
 
 from torchmetrics.functional import dice
+from misc.logger_tool import logger
 
 class CDTrainer():
 
@@ -143,9 +144,8 @@ class CDTrainer():
 
 
     def _load_checkpoint(self, ckpt_name='last_ckpt.pt'):
-        print("\n")
         if os.path.exists(os.path.join(self.checkpoint_dir, ckpt_name)):
-            self.logger.write('loading last checkpoint...\n')
+            logger.info('loading last checkpoint...')
             # load the entire checkpoint
             checkpoint = torch.load(os.path.join(self.checkpoint_dir, ckpt_name),
                                     map_location=self.device)
@@ -169,7 +169,7 @@ class CDTrainer():
                   (self.epoch_to_start, self.best_val_acc, self.best_epoch_id))
             self.logger.write('\n')
         elif self.args.pretrain is not None:
-            print("Initializing backbone weights from: " + self.args.pretrain)
+            logger.info(f"Initializing backbone weights from: {self.args.pretrain}")
             self.net_G.load_state_dict(torch.load(self.args.pretrain), strict=False)
             self.net_G.to(self.device)
             self.net_G.eval()

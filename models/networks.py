@@ -106,7 +106,7 @@ def init_weights(net, init_type='normal', init_gain=0.02):
             init.normal_(m.weight.data, 1.0, init_gain)
             init.constant_(m.bias.data, 0.0)
 
-    print('initialize network with %s' % init_type)
+    logger.info(f"initialize network with {init_type}")
     net.apply(init_func)  # apply the initialization function <init_func>
 
 
