@@ -2,7 +2,7 @@
 
 gpus=2
 data_name=change256
-net_G=base_transformer_pos_s4_dd8 #This is the best version
+net_G=SSWin #This is the best version
 split=test
 vis_root=/home/brendan/LASTFormer/ChangeFormer-main/vis
 project_name=2aCD_base_transformer_pos_s4_dd8_change256_b8_lr0.0001_adamw_train_valid_200_linear_BK_Dice_CE_Loss_multi_train_True_multi_infer_False_shuffle_AB_False_embed_dim_256

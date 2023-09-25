@@ -2,12 +2,12 @@
 
 gpus=2
 data_name=change256
-net_G=Unet #This is the best version
+net_G=SiamUnet_conc #This is the best version
 split=test
 vis_root=/home/brendan/LASTFormer/ChangeFormer-main/vis
-project_name=1aREAL_Unet_change256_b8_lr0.0001_adamw_train_valid_200_linear_BK_Dice_CE_Loss_multi_train_True_multi_infer_False_shuffle_AB_False
+project_name=2aCD_SiamUnet_conc_change256_b8_lr0.0001_adamw_train_valid_200_linear_BK_Dice_CE_Loss
 
-checkpoints_root=/home/brendan/LASTFormer/ChangeFormer-maincheckpoints/1aREAL_Unet_change256_b8_lr0.0001_adamw_train_valid_200_linear_BK_Dice_CE_Loss_multi_train_True_multi_infer_False_shuffle_AB_False
+checkpoints_root=/home/brendan/LASTFormer/ChangeFormer-maincheckpoints/2aCD_SiamUnet_conc_change256_b8_lr0.0001_adamw_train_valid_200_linear_BK_Dice_CE_Loss
 
 
 checkpoint_name=best_ckpt.pt
